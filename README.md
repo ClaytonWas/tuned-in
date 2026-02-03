@@ -20,7 +20,14 @@
 
 ### Content Extraction
 
-When you click "Generate," the extension injects Mozilla's [Readability](https://github.com/mozilla/readability) library into the active tab. Readability strips away navigation, ads, and boilerplate to extract the article's core text content—the same algorithm that powers Firefox's Reader View.
+When you click "Generate," the extension uses a **DOM TreeWalker** to extract visible text content from the active tab. The walker traverses the page and intelligently filters out:
+- Hidden elements (via CSS `display`, `visibility`, `opacity`)
+- Navigation, headers, footers, and sidebars
+- Cookie banners, privacy notices, and modals
+- Ads, login forms, and other boilerplate
+- Short/repetitive text fragments
+
+This approach captures the meaningful content while stripping away UI noise. If the TreeWalker fails, Mozilla's [Readability](https://github.com/mozilla/readability) library is used as a fallback—the same algorithm that powers Firefox's Reader View.
 
 ### On-Device Summarization
 

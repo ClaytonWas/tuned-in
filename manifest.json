@@ -1,10 +1,10 @@
 {
   "name": "Tuned In",
-  "version": "3.0",
+  "version": "3.1",
   "manifest_version": 3,
   "description": "Get a music recommendation of webpage content using a built-in Google Gemini AI model.",
   "trial_tokens": [
-    "A4cWrFfCh/d4lsjmSkGydRu5/rHRKm5aWIx8V94djP50E0vFB3sYHA9FsmW7XMwUmT/IS+0zUFacRi9OzwVdbwEAAACAeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vamZwbmhvcGZwY2drcGZqZWlmam5vaW1qZWhoY2xjZW0iLCJmZWF0dXJlIjoiQUlXcml0ZXJBUEkiLCJleHBpcnkiOjE3NzY3Mjk2MDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
+    "Av6H6kV2t4Oo258IXvzXR/U0O9KcAHomP4PtyUPGlORSJaA+LdVT9Th5EJRKxCs3h4Sl7xCUZe1FtAStwnyhXwkAAABseyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vamZwbmhvcGZwY2drcGZqZWlmam5vaW1qZWhoY2xjZW0iLCJmZWF0dXJlIjoiQUlXcml0ZXJBUEkiLCJleHBpcnkiOjE3NzY3Mjk2MDB9"
   ],
   "background": {
     "service_worker": "background.js"

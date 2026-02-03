@@ -1,6 +1,5 @@
-// Utility: Get all visible text from the page if Readability fails
 function getAllVisibleText() {
-  // Improved fallback: scrape and filter visible text from the DOM
+  // Scrape and filter visible text from the DOM
   let text = '';
   try {
     // Get all visible text nodes, excluding script/style/nav/footer/header/aside
@@ -25,9 +24,6 @@ function getAllVisibleText() {
   }
   return text.trim();
 }
-/* global Summarizer */
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
 
 // DEBUG FLAG
 const DEBUG = true;
@@ -76,8 +72,9 @@ async function getSharedSummarizer() {
   
   try {
     const availability = await Summarizer.availability();
-    if (availability !== 'available') {
-      console.warn('Summarizer not available');
+    console.log('Summarizer availability:', availability);
+    if (availability === 'unavailable' || availability === 'no') {
+      console.warn('Summarizer not available:', availability);
       summarizerInitializing = false;
       return null;
     }
@@ -1600,12 +1597,16 @@ summarizeButton.addEventListener('click', async () => {
       localStorage.setItem('summaryHistory', JSON.stringify(summaryHistory));
       renderHistory();
 
-      summaryElement.setAttribute('hidden', '');
+      if (summaryElement) {
+        summaryElement.setAttribute('hidden', '');
+      }
     } else {
       if (albumCoverLink) {
         albumCoverLink.href = `https://open.spotify.com/search/${encodeURIComponent(analysis.genres.join(' '))}`;
       }
-      summaryElement.removeAttribute('hidden');
+      if (summaryElement) {
+        summaryElement.removeAttribute('hidden');
+      }
       showSummary("Could not find a matching track");
     }
 
@@ -1616,7 +1617,9 @@ summarizeButton.addEventListener('click', async () => {
     if (albumCoverLink) {
       albumCoverLink.href = '#';
     }
-    summaryElement.removeAttribute('hidden');
+    if (summaryElement) {
+      summaryElement.removeAttribute('hidden');
+    }
     showSummary("Error fetching track");
   }
 });
@@ -1627,7 +1630,9 @@ function onContentChange() {
     return;
   }
 
-  summaryElement.removeAttribute('hidden');
+  if (summaryElement) {
+    summaryElement.removeAttribute('hidden');
+  }
 
   if (!pageContent) {
     // Try to scrape all visible text if Readability fails
