@@ -1,25 +1,34 @@
 # Tuned In
 
-**A music recommender for whatever's on your screen.** Tuned In reads the page you're on, characterizes its mood with on-device AI, and returns one song that fits. Amd links to play it on Apple Music, Spotify, YouTube Music, or YouTube. 
+**A music recommender for whatever's on your screen.** Tuned In reads the page you're on and returns one song that fits with links to play it on Apple Music, Spotify, YouTube Music, or YouTube. 
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/tuned-in/jfpnhopfpcgkpfjeifjnoimjehhclcem)
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/nowPlaying.png" width="300" alt="Album art, streaming links, accent colour shifts to match the cover." />
+<table>
+<tr>
+
+<td>
+  <img width="500" height="720" alt="image" src="https://github.com/user-attachments/assets/a487e26c-f9dd-49bc-95ad-0752179a2edd" />
+
+</td>
+
+<td>
+  <img width="310" height="350" alt="image" src="https://github.com/user-attachments/assets/6eb6ba78-a2e0-481f-84d2-eea859530cd8" />
+
+  <img width="310" height="350" alt="image" src="https://github.com/user-attachments/assets/8687c682-90c9-464a-864f-f1dc20f0bacd" />
+
+</td>
+
+<td>
+  <img width="500" height="750" alt="image" src="https://github.com/user-attachments/assets/a0dc26ba-0128-41d0-8351-45bcad1943a7" />
+</td>
+
+</tr>
+</table>
 </p>
-
-<p align="center">
-  <img src="docs/settings.png" width="300" alt="Themes, chunk size, discovery range" />
-</p>
-
-## Highlights
-
-- **Fully on-device AI.** Chrome's Summarizer + Prompt APIs (Gemini Nano) handle every analysis step. Your reading material never leaves the browser.
-- **One song, four ways to play it.** Each recommendation surfaces direct/search links for Apple Music, Spotify, YouTube Music, and YouTube.
-- **History with previews.** Recommendations up to 1000 songs persist locally with 30-second audio previews and the page that triggered them.
-- **Custom text mode.** Paste a poem or a tweet and get a recommendation for that text instead of the active tab.
 
 ## How It Works
 
