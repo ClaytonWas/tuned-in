@@ -7,43 +7,41 @@
   </head>
   <body>
     <div class="container">
-      <!-- Dynamic Island Header -->
       <header class="header" id="dynamicIsland">
         <div class="header-main">
-          <div class="header-controls">
-            <label class="checkbox-label">
-              <input type="checkbox" id="fullTextMode" />
-              <span>Full Text</span>
-            </label>
-            <div class="range-group">
-              <span class="range-label">Chunk:</span>
-              <input type="range" id="charLimit" min="1000" max="10000" value="7500" step="500" />
-              <span id="charLimitValue" class="range-value">10000</span>
-            </div>
-          </div>
-          <button id="settingsButton" class="header-settings-btn" title="Settings">
-            <span>⚙️</span>
-          </button>
+          <span class="header-brand">Tuned In</span>
+          <button id="settingsButton" class="header-settings-btn" title="Settings" aria-label="Settings">⚙</button>
         </div>
-        
-        <!-- Settings Panel (expands from Dynamic Island) -->
+
         <div id="settingsPanel" class="settings-panel" hidden>
           <div class="settings-content">
-            <!-- Theme Mode Toggle -->
             <div class="setting-item">
               <label class="setting-label" for="themeToggle">Theme</label>
               <button id="themeToggle" class="setting-btn">🌞 Light / 🌚 Dark</button>
             </div>
 
-            <!-- History Limit -->
             <div class="setting-item">
-              <label class="setting-label">History Limit</label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="fullTextMode" />
+                <span>Full text mode</span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-label" for="charLimit">Chunk size</label>
+              <div class="range-group">
+                <input type="range" id="charLimit" min="1000" max="10000" value="7500" step="500" />
+                <span id="charLimitValue" class="range-value">10000</span>
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-label">History limit</label>
               <input type="number" id="historyLimit" class="setting-control" min="1" max="100" value="20" />
             </div>
 
-            <!-- Popularity Range -->
             <div class="setting-item">
-              <label class="setting-label">Popularity Range</label>
+              <label class="setting-label">Discovery range</label>
               <div class="range-slider-container">
                 <div class="range-slider">
                   <input type="range" id="popularityMin" min="0" max="100" value="25" class="range-input range-min" />
@@ -59,7 +57,6 @@
               </div>
             </div>
 
-            <!-- Export/Clear History -->
             <div class="setting-item">
               <label class="setting-label">History</label>
               <div class="setting-buttons">
@@ -68,11 +65,17 @@
               </div>
             </div>
 
-            <!-- Show Scrollbar Toggle -->
             <div class="setting-item">
               <label class="checkbox-label">
                 <input type="checkbox" id="showScrollbar" />
-                <span>Show Scrollbar</span>
+                <span>Show scrollbar</span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <label class="checkbox-label">
+                <input type="checkbox" id="debugMode" />
+                <span>Debug logging</span>
               </label>
             </div>
           </div>
@@ -89,6 +92,44 @@
             <span class="generate-btn-text">Generate Recommendation</span>
           </button>
 
+          <!-- Model warmup status -->
+          <div id="modelStatus" hidden class="model-status">
+            <div class="model-status-head">
+              <span class="model-status-spinner"></span>
+              <div class="model-status-titles">
+                <span class="model-status-title">Loading on-device AI</span>
+                <span class="model-status-hint">Chrome loads the model when the side panel opens. Usually takes 15-30s.</span>
+              </div>
+            </div>
+            <div class="model-status-row" data-model="summarizer">
+              <span class="model-status-row-label">Summarizer</span>
+              <div class="model-status-progress">
+                <div class="model-status-progress-fill"></div>
+              </div>
+              <span class="model-status-row-state">Waiting…</span>
+            </div>
+            <div class="model-status-row" data-model="prompt">
+              <span class="model-status-row-label">Language model</span>
+              <div class="model-status-progress">
+                <div class="model-status-progress-fill"></div>
+              </div>
+              <span class="model-status-row-state">Waiting…</span>
+            </div>
+          </div>
+
+          <!-- Custom text input (collapsible) -->
+          <details id="customTextDetails" class="custom-text">
+            <summary class="custom-text-summary">Use Your Own Text</summary>
+            <div class="custom-text-body">
+              <textarea
+                id="customTextArea"
+                class="custom-text-area"
+                rows="5"
+                placeholder="Paste any text and the AI will analyze its musical energy."></textarea>
+              <button id="customTextSubmit" class="custom-text-btn">Generate from this text</button>
+            </div>
+          </details>
+
           <!-- Warning (compact) -->
           <div id="warning" hidden class="warning-banner"></div>
 
@@ -96,12 +137,12 @@
           <div id="musicInfo" hidden class="now-playing-card">
             <div id="trackInfo" class="now-playing-content">
               <div class="now-playing-artwork">
-                <a id="albumCoverLink" href="#" target="_blank" title="Open in Spotify">
+                <a id="albumCoverLink" href="#" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">
                   <img id="albumCover" src="" alt="Album cover" class="album-art" />
                 </a>
               </div>
               <div class="now-playing-details">
-                <a id="spotifyLink" href="#" target="_blank" class="now-playing-link">
+                <a id="trackLink" href="#" target="_blank" rel="noopener noreferrer" class="now-playing-link">
                   <div class="now-playing-track">
                     <h3 id="trackName" class="track-name">—</h3>
                   </div>
@@ -112,9 +153,15 @@
                 <div class="now-playing-meta">
                   <span class="meta-tag" id="musicGenres">-</span>
                   <span class="meta-divider">•</span>
-                  <span class="meta-tag"><span id="musicBpm">-</span> BPM</span>
+                  <span class="meta-tag"><span id="musicBpm">-</span></span>
                 </div>
               </div>
+            </div>
+            <div class="streaming-links">
+              <a id="appleMusicLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">Apple Music</a>
+              <a id="spotifyLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">Spotify</a>
+              <a id="ytMusicLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">YT Music</a>
+              <a id="youtubeLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
           </div>
         </section>
@@ -130,7 +177,6 @@
       </main>
     </div>
 
-    <script src="processCards.js"></script>
     <script src="index.js"></script>
   </body>
 </html>

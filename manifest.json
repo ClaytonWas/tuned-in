@@ -1,6 +1,6 @@
 {
   "name": "Tuned In",
-  "version": "3.1",
+  "version": "4.0",
   "manifest_version": 3,
   "description": "Get a music recommendation of webpage content using a built-in Google Gemini AI model.",
   "trial_tokens": [
@@ -11,17 +11,22 @@
   },
   "permissions": [
     "tabs",
-    "scripting",
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "scripting"
   ],
   "host_permissions": [
     "http://*/*",
-    "https://*/*",
-    "https://api.spotify.com/*",
-    "https://tuned-in-api.vercel.app/*"
+    "https://*/*"
   ],
-  "side_panel": { 
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["scripts/extract-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
     "default_path": "sidepanel/index.html"
   },
   "action": {
