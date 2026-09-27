@@ -5,7 +5,8 @@
   "description": "",
   "main": "background.js",
   "scripts": {
-    "build": "rollup -c rollup.config.mjs"
+    "fetch-model": "node tools/fetch-model.mjs && node tools/embed-prototypes.mjs",
+    "build": "npm run fetch-model && rollup -c rollup.config.mjs"
   },
   "keywords": [],
   "license": "Apache 2.0",
@@ -14,5 +15,8 @@
     "@rollup/plugin-node-resolve": "15.3.0",
     "rollup": "4.24.4",
     "rollup-plugin-copy": "^3.5.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.0"
   }
 }

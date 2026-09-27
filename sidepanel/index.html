@@ -21,6 +21,15 @@
             </div>
 
             <div class="setting-item">
+              <label class="setting-label" for="aiEngine">AI engine</label>
+              <select id="aiEngine" class="setting-control">
+                <option value="auto">Auto</option>
+                <option value="local">Local model (any browser)</option>
+                <option value="nano">Gemini Nano (Chrome only)</option>
+              </select>
+            </div>
+
+            <div class="setting-item">
               <label class="checkbox-label">
                 <input type="checkbox" id="fullTextMode" />
                 <span>Full text mode</span>
@@ -98,8 +107,15 @@
               <span class="model-status-spinner"></span>
               <div class="model-status-titles">
                 <span class="model-status-title">Loading on-device AI</span>
-                <span class="model-status-hint">Chrome loads the model when the side panel opens. Usually takes 15-30s.</span>
+                <span class="model-status-hint" id="modelStatusHint">Chrome loads the model when the side panel opens. Usually takes 15-30s.</span>
               </div>
+            </div>
+            <div class="model-status-row" data-model="local" hidden>
+              <span class="model-status-row-label">Local model</span>
+              <div class="model-status-progress">
+                <div class="model-status-progress-fill"></div>
+              </div>
+              <span class="model-status-row-state">Waiting…</span>
             </div>
             <div class="model-status-row" data-model="summarizer">
               <span class="model-status-row-label">Summarizer</span>

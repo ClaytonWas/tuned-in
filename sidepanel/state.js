@@ -7,6 +7,7 @@ const DEFAULTS = {
   themeMode: 'light',
   showScrollbar: false,
   debugMode: false,
+  aiEngine: 'auto',
   summaryHistory: [],
 };
 

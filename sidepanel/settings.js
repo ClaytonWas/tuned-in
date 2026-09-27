@@ -95,6 +95,17 @@ function setupDebugMode() {
   });
 }
 
+function setupAiEngine() {
+  const select = document.querySelector('#aiEngine');
+  if (!select) return;
+  select.value = state.aiEngine;
+  select.addEventListener('change', (e) => {
+    saveState({ aiEngine: e.target.value });
+    // Engine choice is resolved once per panel load; reload so the right model warms up.
+    location.reload();
+  });
+}
+
 function setupPopularitySlider() {
   const minInput = document.querySelector('#popularityMin');
   const maxInput = document.querySelector('#popularityMax');
@@ -148,6 +159,7 @@ export function setupSettings(onContentRelevantChange) {
   setupHistoryLimit();
   setupScrollbar();
   setupDebugMode();
+  setupAiEngine();
   setupPopularitySlider();
   setupHistoryButtons();
 }

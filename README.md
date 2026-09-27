@@ -10,11 +10,11 @@
 
 Tuned In is a Chrome side panel extension that reads the page you're on, captures its mood and energy with on-device AI, and recommends one song that fits, with links to play it on Apple Music, Spotify, YouTube Music, or YouTube.
 
-All analysis runs locally through Chrome's Summarizer and Prompt APIs (Gemini Nano). No tracking, no external servers, no webpage data ever leaves your browser.
+All analysis runs locally. On Chrome with Gemini Nano installed it uses the built-in Summarizer and Prompt APIs; everywhere else (Edge, Brave, Opera, Vivaldi, Arc, or Chrome without Nano) it uses Google's EmbeddingGemma model, bundled with the extension. No tracking, no external servers, no webpage data ever leaves your browser.
 
 ### Features
 
-- ⚡ **On-device AI** using Chrome's Summarizer and Prompt APIs, fully private.
+- ⚡ **On-device AI** using Gemini Nano when available, or a bundled local model on any Chromium browser, fully private.
 - 📝 **Custom text mode** for analyzing anything you paste instead of the page.
 
 ## Screenshots
@@ -45,7 +45,7 @@ All analysis runs locally through Chrome's Summarizer and Prompt APIs (Gemini Na
 
 ### Dependencies
 
-- [**Chrome 138+** (Stable channel)](https://www.google.com/chrome/) with on-device AI flags enabled
+- Any recent Chromium-based browser (Chrome, Edge, Brave, Opera, Vivaldi, Arc)
 - [**Node.js** (v18 or higher)](https://nodejs.org/en/download)
 - A free [**Last.fm API key**](https://www.last.fm/api/account/create)
 
@@ -77,7 +77,9 @@ npm run build
    - Click **Load unpacked** and select the generated `dist/` folder
    - Pin the extension and open the side panel from the toolbar icon
 
-The first time the side panel opens, Chrome loads Gemini Nano into the runtime. This takes 15 to 30 seconds. Two indeterminate bars (one per model) display until both are ready.
+`npm run build` downloads the local model ([EmbeddingGemma 300M](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX), 4-bit, ~200MB) into `models/` on first run, precomputes the tag embeddings, and bundles both into `dist/`.
+
+When the side panel opens, a status bar shows the model loading. The bundled model is ready in about 2 seconds; Gemini Nano takes 15 to 30 seconds.
 
 ## Usage
 
@@ -107,14 +109,17 @@ Access settings via the gear icon in the side panel:
 - **Export / Clear history**: Download all stored recommendations as JSON, or wipe local storage
 - **Show scrollbar**: Toggle native scrollbar visibility
 - **Debug logging**: Enable verbose stage-by-stage timing logs
+- **AI engine**: Auto (Gemini Nano if already installed, otherwise the local model), Local model, or Gemini Nano
 
 ## How It Works
 
 The pipeline runs entirely in the side panel after one button press.
 
 1. **Content extraction**: A content script runs in the active tab and pulls meaningful text.
-2. **Summarization (Gemini Nano)**: The extracted text is fed to Chrome's [Summarizer API](https://developer.chrome.com/docs/ai/summarizer-api).
-3. **Mood characterization (Prompt API)**: Four focused prompts run via Chrome's [Prompt API](https://developer.chrome.com/docs/extensions/ai/prompt-api):
+2. **Engine selection**: Gemini Nano is used when Chrome reports both the Summarizer and Prompt APIs as `available`. Otherwise the bundled local model is used. It runs in a Web Worker on WebGPU when available, or multi-threaded WASM otherwise, so no GPU is required.
+3. **Mood characterization**:
+   - **Local model**: three chunks spread across the page (or up to 24 in full text mode) are embedded with EmbeddingGemma and compared against a short description of every energy, mood, style and scene tag. Styles are also scored by how well they fit the detected moods and energy. The closest matches are sampled with a little randomness so repeat runs vary.
+   - **Gemini Nano**: the text is summarized with Chrome's [Summarizer API](https://developer.chrome.com/docs/ai/summarizer-api), then four focused prompts run via the [Prompt API](https://developer.chrome.com/docs/extensions/ai/prompt-api):
    - **Energy**: one of `calm | mellow | moderate | driving | intense`
    - **Moods**: 2 to 3 from a fixed pool (`melancholic`, `dreamy`, `nostalgic`, `aggressive`, ...)
    - **Styles**: 2 genres from a fixed pool, chosen to differ in feel
@@ -125,7 +130,7 @@ The pipeline runs entirely in the side panel after one button press.
 
 ## Privacy & Security
 
-- **Local AI**: Summarization and mood characterization run on-device via Gemini Nano.
+- **Local AI**: Mood characterization runs on-device, via Gemini Nano or the model bundled in the extension. The model is never downloaded at runtime.
 - **No accounts, no OAuth, no tracking.**
 - **External requests are limited to:**
   - `ws.audioscrobbler.com` (Last.fm): sends only allowlisted mood/genre tags
@@ -147,6 +152,11 @@ tuned-in/
 │   ├── state.js            # chrome.storage.local state shape + helpers
 │   ├── summarizer.js       # Wraps Chrome Summarizer; load-progress events
 │   ├── llm.js              # Wraps Chrome Prompt API; 4-prompt classifier
+│   ├── localModel.js       # Client for the local model worker
+│   ├── localModelWorker.js # EmbeddingGemma tag classifier (any Chromium)
+│   ├── prototypes.js       # Tag descriptions the page is compared against
+│   ├── engine.js           # Picks Gemini Nano or the local model
+│   ├── tags.js             # Shared energy/mood/style/scene tag pools
 │   ├── music.js            # Last.fm + iTunes retrieval, filtering
 │   ├── ui.js               # Now-playing rendering, accent extraction
 │   ├── settings.js         # Settings panel handlers
@@ -155,6 +165,9 @@ tuned-in/
 │   └── logger.js           # Stage-aware console logger
 ├── scripts/
 │   └── extract-content.js  # Content script for active tab
+├── tools/
+│   ├── fetch-model.mjs     # Downloads the local model at build time
+│   └── embed-prototypes.mjs # Precomputes tag embeddings at build time
 ├── background.js           # Service worker, opens side panel
 ├── manifest.json           # MV3 manifest
 └── rollup.config.mjs       # Build config
@@ -163,7 +176,7 @@ tuned-in/
 ### Tech Stack
 
 - **Runtime**: Chrome Extension Manifest V3 (side panel)
-- **On-device AI**: Gemini Nano via Summarizer and Prompt APIs
+- **On-device AI**: Gemini Nano via Summarizer and Prompt APIs, or [Transformers.js](https://huggingface.co/docs/transformers.js) + EmbeddingGemma 300M on WebGPU/WASM
 - **Build**: Rollup
 - **APIs**: Last.fm, iTunes Search
 
@@ -174,7 +187,7 @@ tuned-in/
 npm run build
 ```
 
-The Summarizer and Prompt APIs require **Chrome 138+** and an [origin trial token](https://developer.chrome.com/origintrials) (included in [manifest.json](manifest.json)). See [Chrome's AI documentation](https://developer.chrome.com/docs/ai) for setup details.
+The Gemini Nano path requires **Chrome 138+** on [supported hardware](https://developer.chrome.com/docs/ai/get-started#hardware). Without it, the extension uses the local model automatically.
 
 ## Future Features
 

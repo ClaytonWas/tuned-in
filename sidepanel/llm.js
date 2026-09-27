@@ -1,27 +1,7 @@
 import * as log from './logger.js';
+import { ENERGY_ENUM, MOOD_POOL, STYLE_POOL, SCENE_POOL, composeTags } from './tags.js';
 
 const MAX_SUMMARY_INPUT = 2000;
-
-const ENERGY_ENUM = ['calm', 'mellow', 'moderate', 'driving', 'intense'];
-
-const MOOD_POOL = [
-  'sad', 'melancholic', 'happy', 'energetic', 'aggressive',
-  'romantic', 'dreamy', 'atmospheric', 'dark', 'epic',
-  'uplifting', 'nostalgic',
-];
-
-const STYLE_POOL = [
-  'ambient', 'chill', 'lo-fi', 'electronic', 'house', 'techno', 'synthwave',
-  'rock', 'indie', 'alternative', 'punk', 'metal',
-  'pop', 'indie pop', 'hip-hop', 'rap', 'r&b', 'soul', 'funk',
-  'jazz', 'blues', 'classical', 'piano', 'soundtrack',
-  'folk', 'acoustic', 'country', 'reggae', 'latin',
-];
-
-const SCENE_POOL = [
-  'study', 'focus', 'sleep', 'workout', 'driving',
-  'rainy day', 'summer', 'late night',
-];
 
 let promptSession = null;
 let promptInitPromise = null;
@@ -246,19 +226,7 @@ export async function analyzePageForMusic(summary) {
     askScenes(session, sum),
   ]);
 
-  // Styles first: discoverPool only queries Last.fm with tags.slice(0, 3), and genre tags return cleaner pools than mood tags.
-  const seen = new Set();
-  const tags = [];
-  for (const t of [...styles, ...moods, ...scenes]) {
-    if (seen.has(t)) continue;
-    seen.add(t);
-    tags.push(t);
-    if (tags.length >= 5) break;
-  }
-  if (tags.length === 0) {
-    log.warn('analyzePageForMusic: all prompts returned empty; using defaults');
-    tags.push('chill', 'ambient');
-  }
+  const tags = composeTags(styles, moods, scenes);
 
   log.stage('analyzePageForMusic: composed', { energy, tags });
   return { energy, tags, seeds: [] };

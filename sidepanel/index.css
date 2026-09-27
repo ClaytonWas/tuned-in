@@ -1085,6 +1085,10 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--fs-xs);
 }
 
+.model-status-row[hidden] {
+  display: none;
+}
+
 .model-status-row-label {
   color: var(--text-muted);
   white-space: nowrap;

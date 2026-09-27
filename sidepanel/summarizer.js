@@ -24,6 +24,11 @@ export async function getSharedSummarizer() {
   if (sharedSummarizer) return sharedSummarizer;
   if (initPromise) return initPromise;
 
+  if (typeof Summarizer === 'undefined') {
+    emit('unavailable', 0);
+    return null;
+  }
+
   initPromise = (async () => {
     const availability = await Summarizer.availability();
     log.event('Summarizer.availability()', availability);

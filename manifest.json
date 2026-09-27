@@ -2,12 +2,18 @@
   "name": "Tuned In",
   "version": "4.0",
   "manifest_version": 3,
-  "description": "Get a music recommendation of webpage content using a built-in Google Gemini AI model.",
-  "trial_tokens": [
-    "Av6H6kV2t4Oo258IXvzXR/U0O9KcAHomP4PtyUPGlORSJaA+LdVT9Th5EJRKxCs3h4Sl7xCUZe1FtAStwnyhXwkAAABseyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vamZwbmhvcGZwY2drcGZqZWlmam5vaW1qZWhoY2xjZW0iLCJmZWF0dXJlIjoiQUlXcml0ZXJBUEkiLCJleHBpcnkiOjE3NzY3Mjk2MDB9"
-  ],
+  "description": "Get a music recommendation for any webpage using on-device AI. Works in Chrome, Edge, Brave and other Chromium browsers.",
   "background": {
     "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "cross_origin_embedder_policy": {
+    "value": "credentialless"
+  },
+  "cross_origin_opener_policy": {
+    "value": "same-origin"
   },
   "permissions": [
     "tabs",
@@ -21,8 +27,13 @@
   ],
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["scripts/extract-content.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "scripts/extract-content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

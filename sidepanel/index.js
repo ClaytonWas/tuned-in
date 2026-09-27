@@ -1,6 +1,8 @@
 import { state, loadState } from './state.js';
 import { generateSummary, getSharedSummarizer, onSummarizerProgress } from './summarizer.js';
 import { analyzePageForMusic, ensurePromptSession, onPromptProgress } from './llm.js';
+import { analyzeLocally, ensureLocalModel, onLocalModelProgress } from './localModel.js';
+import { resolveEngine } from './engine.js';
 import { getRecommendedTrack } from './music.js';
 import { renderHistory, showSkeletonHistory, addToHistory, trimHistory } from './history.js';
 import { setupSettings } from './settings.js';
@@ -182,33 +184,44 @@ async function handleGenerate(override) {
     }
   }
 
-  if (typeof Summarizer !== 'undefined' && typeof Summarizer.reset === 'function') {
-    Summarizer.reset();
-  }
-
   updateProcessCard(processId, { progress: 0, status: 'running' });
-  const summaryTimer = log.timer('2. summarize');
-  const summary = await generateSummary(content, state.fullTextMode, (progress) => {
-    updateProcessCard(processId, { progress, status: 'running' });
-  });
-  summaryTimer.end({ inputChars: content.length, outputChars: summary.length, output: summary });
+  let progress = 0;
+  let tick = null;
+  const startTicking = (from) => {
+    progress = from;
+    tick = setInterval(() => {
+      progress = Math.min(100, progress + 2);
+      updateProcessCard(processId, { progress, status: 'running' });
+    }, 100);
+  };
 
-  if (summary.startsWith('Error:')) {
-    updateWarning("This feature requires Chrome's on-device AI model (Gemini Nano). Please upgrade Chrome.");
-    updateProcessCard(processId, { progress: 100, status: 'error' });
-    log.error('summarizer unavailable', summary);
-    isAnalyzing = false;
-    return;
+  let engine = await resolveEngine();
+  let summary = '';
+  let analysis;
+
+  if (engine === 'nano') {
+    const summaryTimer = log.timer('2. summarize');
+    summary = await generateSummary(content, state.fullTextMode, (p) => {
+      updateProcessCard(processId, { progress: p, status: 'running' });
+    });
+    summaryTimer.end({ inputChars: content.length, outputChars: summary.length, output: summary });
+
+    if (summary.startsWith('Error:')) {
+      log.warn('Gemini Nano summarizer unavailable; falling back to local model', summary);
+      summary = '';
+      engine = 'local';
+    }
   }
 
-  let progress = 50;
-  const tick = setInterval(() => {
-    progress = Math.min(100, progress + 2);
-    updateProcessCard(processId, { progress, status: 'running' });
-  }, 100);
-
-  const analysisTimer = log.timer('3. analyze');
-  const analysis = await analyzePageForMusic(summary);
+  const analysisTimer = log.timer(`3. analyze (${engine})`);
+  if (engine === 'nano') {
+    startTicking(50);
+    analysis = await analyzePageForMusic(summary);
+  } else {
+    startTicking(10);
+    const input = state.fullTextMode ? content : content.slice(0, state.charLimit);
+    analysis = await analyzeLocally(input, state.fullTextMode);
+  }
   clearInterval(tick);
   analysisTimer.end({
     energy: analysis.energy,
@@ -330,14 +343,22 @@ function renderModelRow(modelKey, { phase }) {
 }
 
 async function warmupModels() {
-  log.stage('warmup: starting model preload');
+  const engine = await resolveEngine();
+  log.stage('warmup: starting model preload', { engine });
   showModelStatus();
 
-  const ready = { summarizer: false, prompt: false };
+  const keys = engine === 'nano' ? ['summarizer', 'prompt'] : ['local'];
+  for (const row of document.querySelectorAll('.model-status-row')) {
+    row.hidden = !keys.includes(row.dataset.model);
+  }
+  const hint = document.querySelector('#modelStatusHint');
+  if (hint && engine === 'local') hint.textContent = 'Loading the bundled model. Usually takes a few seconds.';
+
+  const ready = Object.fromEntries(keys.map(k => [k, false]));
   let fadeScheduled = false;
   const maybeScheduleFade = () => {
     if (fadeScheduled) return;
-    if (ready.summarizer && ready.prompt) {
+    if (Object.values(ready).every(Boolean)) {
       fadeScheduled = true;
       setTimeout(hideModelStatus, 5000);
     }
@@ -349,6 +370,17 @@ async function warmupModels() {
       maybeScheduleFade();
     }
   };
+
+  if (engine === 'local') {
+    const unsubLocal = onLocalModelProgress((evt) => onModelEvent('local', evt));
+    const start = performance.now();
+    const model = await ensureLocalModel();
+    if (model) log.ok(`warmup: local model ready in ${Math.round(performance.now() - start)}ms`);
+    unsubLocal();
+    log.stage('warmup: complete');
+    return;
+  }
+
   const unsubSummarizer = onSummarizerProgress((evt) => onModelEvent('summarizer', evt));
   const unsubPrompt = onPromptProgress((evt) => onModelEvent('prompt', evt));
 
