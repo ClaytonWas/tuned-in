@@ -1,4 +1,4 @@
-# 🎵 Tuned In
+# <img src="images/icon.svg" alt="" width="40" align="top"> Tuned In
 
 **A song for whatever's on your screen.**
 
