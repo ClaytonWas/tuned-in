@@ -1,217 +1,111 @@
-# 🎵 Tuned In [![Chrome](https://img.shields.io/badge/Chrome-0A1929?logo=googlechrome&logoColor=4FC3F7)](#)
+# 🎵 Tuned In
 
-**A music recommender for whatever's on your screen**
+**A song for whatever's on your screen.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-0A1929?logoColor=4FC3F7)](https://opensource.org/licenses/MIT)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Available-0A1929?logo=googlechrome&logoColor=4FC3F7)](https://chromewebstore.google.com/detail/tuned-in/jfpnhopfpcgkpfjeifjnoimjehhclcem)
-[![Gemini Nano](https://img.shields.io/badge/Gemini%20Nano-On--device-0A1929?logo=googlegemini&logoColor=4FC3F7)](https://developer.chrome.com/docs/ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-0A1929)](LICENSE)
+[![On-device AI](https://img.shields.io/badge/AI-On--device-0A1929?logo=googlegemini&logoColor=4FC3F7)](https://developer.chrome.com/docs/ai)
 
-## About
-
-Tuned In is a Chrome side panel extension that reads the page you're on, captures its mood and energy with on-device AI, and recommends one song that fits, with links to play it on Apple Music, Spotify, YouTube Music, or YouTube.
-
-All analysis runs locally. On Chrome with Gemini Nano installed it uses the built-in Summarizer and Prompt APIs; everywhere else (Edge, Brave, Opera, Vivaldi, Arc, or Chrome without Nano) it uses Google's EmbeddingGemma model, bundled with the extension. No tracking, no external servers, no webpage data ever leaves your browser.
-
-### Features
-
-- ⚡ **On-device AI** using Gemini Nano when available, or a bundled local model on any Chromium browser, fully private.
-- 📝 **Custom text mode** for analyzing anything you paste instead of the page.
-
-## Screenshots
+Tuned In is a side panel extension for Chromium browsers. It reads the page you're on, works out its mood and energy with on-device AI, and recommends one song to match. Page text never leaves your browser.
 
 <p align="center">
-<table>
-<tr>
-
-<td>
-  <img width="500" height="720" alt="Light mode song recommendation" src="https://github.com/user-attachments/assets/a487e26c-f9dd-49bc-95ad-0752179a2edd" />
-</td>
-
-<td>
-  <img width="310" height="350" alt="Light mode settings" src="https://github.com/user-attachments/assets/6eb6ba78-a2e0-481f-84d2-eea859530cd8" />
-
-  <img width="310" height="350" alt="Dark mode settings" src="https://github.com/user-attachments/assets/8687c682-90c9-464a-864f-f1dc20f0bacd" />
-</td>
-
-<td>
-  <img width="500" height="750" alt="Dark mode song recommendation from custom prompt" src="https://github.com/user-attachments/assets/a0dc26ba-0128-41d0-8351-45bcad1943a7" />
-</td>
-
-</tr>
-</table>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.png">
+    <img src="docs/readme/hero-light.png" width="860" alt="Tuned In side panel: settings, a Penguin Cafe Orchestra recommendation, and a recommendation from pasted text">
+  </picture>
 </p>
 
-## Getting Started
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/readme/now-playing-dark.png">
+        <img src="docs/readme/now-playing-light.png" alt="Now-playing card with album art, preview button and streaming links">
+      </picture>
+    </td>
+    <td>
+      <h3>One song, ready to play</h3>
+      A 30-second preview, plus links to Apple Music, Spotify, YouTube Music and YouTube.
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h3>You choose what it reads</h3>
+      The opening of a page, the whole page, or text you paste in. Lean towards hidden gems or hits.
+    </td>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/readme/settings-dark.png">
+        <img src="docs/readme/settings-light.png" alt="Settings popover, with the Advanced section open on the right">
+      </picture>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/readme/history-dark.png">
+        <img src="docs/readme/history-light.png" alt="History list, and one entry expanded to show the exact text the AI read">
+      </picture>
+    </td>
+    <td>
+      <h3>History that shows its work</h3>
+      Every pick is saved locally with its genres, energy, source page and the exact text the AI read.
+    </td>
+  </tr>
+</table>
 
-### Dependencies
+## Install
 
-- Any recent Chromium-based browser (Chrome, Edge, Brave, Opera, Vivaldi, Arc)
-- [**Node.js** (v18 or higher)](https://nodejs.org/en/download)
-- A free [**Last.fm API key**](https://www.last.fm/api/account/create)
+**From the [Chrome Web Store](https://chromewebstore.google.com/detail/tuned-in/jfpnhopfpcgkpfjeifjnoimjehhclcem)**, or build it yourself:
 
-### Installation
-
-#### From Source
-
-1. Clone the repository:
 ```bash
 git clone https://github.com/ClaytonWas/tuned-in.git
 cd tuned-in
-```
-
-2. Install dependencies:
-```bash
 npm install
+npm run build   # first run downloads the ~200 MB local model into models/
 ```
 
-3. Open [`sidepanel/music.js`](sidepanel/music.js) and replace the `LASTFM_API_KEY` value with your own key.
+Before building, put your own free [Last.fm API key](https://www.last.fm/api/account/create) in `LASTFM_API_KEY` in [`sidepanel/music.js`](sidepanel/music.js).
 
-4. Build the extension:
-```bash
-npm run build
-```
+Then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick `dist/`. After code changes, run `npm run build` and reload the extension.
 
-5. Load the extension:
-   - Open `chrome://extensions/`
-   - Enable **Developer mode**
-   - Click **Load unpacked** and select the generated `dist/` folder
-   - Pin the extension and open the side panel from the toolbar icon
+Requires Node 18+ and any recent Chromium browser (Chrome, Edge, Brave, Opera, Vivaldi, Arc).
 
-`npm run build` downloads the local model ([EmbeddingGemma 300M](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX), 4-bit, ~200MB) into `models/` on first run, precomputes the tag embeddings, and bundles both into `dist/`.
+## How it works
 
-When the side panel opens, a status bar shows the model loading. The bundled model is ready in about 2 seconds; Gemini Nano takes 15 to 30 seconds.
+1. **Extract**: [`scripts/extract-content.js`](scripts/extract-content.js) pulls the readable text from the active tab (up to 20k chars).
+2. **Analyse**, on-device, with one of two engines:
+   - **Gemini Nano** (Chrome 138+ with Nano installed): summarises the text with the Summarizer API, then the Prompt API picks energy, moods, styles and a scene.
+   - **EmbeddingGemma** (everywhere else): the bundled model embeds 1.5k-char passages and matches them against tag descriptions. It runs in a Web Worker on WebGPU or WASM.
+3. **Find a song**: the top tags go to Last.fm's `tag.getTopTracks`. The Discovery range setting filters those tracks by listener count, and the pick is resolved through the iTunes Search API to get the artwork, preview and links.
 
-## Usage
-
-### Recommending a Song
-
-1. Open the **Tuned In** side panel from the toolbar
-2. Navigate to any page you'd like a song for
-3. Click **Tune In** to run the pipeline on the active tab
-4. Review the now-playing card with album art and a 30-second preview
-5. Click any platform link to open the track in Apple Music, Spotify, YouTube Music, or YouTube
-
-### Custom Text Mode
-
-1. Toggle **Custom text mode** in the side panel
-2. Paste or type the text you want analyzed
-3. Click **Tune In** to recommend a song based on the pasted text instead of the page
-
-### Settings
-
-Access settings via the gear icon in the side panel:
-
-- **Theme**: Cycles Light → Dark → Forest (a mellow sage/cream palette)
-- **Full text mode**: Process the entire page rather than just the first chunk
-- **Chunk size**: Characters per processing chunk (1K to 10K)
-- **History limit**: Max saved recommendations (3 to 1000)
-- **Discovery range**: Listener-percentile slice (0 = obscure, 100 = mainstream)
-- **Export / Clear history**: Download all stored recommendations as JSON, or wipe local storage
-- **Show scrollbar**: Toggle native scrollbar visibility
-- **Debug logging**: Enable verbose stage-by-stage timing logs
-- **AI engine**: Auto (Gemini Nano if already installed, otherwise the local model), Local model, or Gemini Nano
-
-## How It Works
-
-The pipeline runs entirely in the side panel after one button press.
-
-1. **Content extraction**: A content script runs in the active tab and pulls meaningful text.
-2. **Engine selection**: Gemini Nano is used when Chrome reports both the Summarizer and Prompt APIs as `available`. Otherwise the bundled local model is used. It runs in a Web Worker on WebGPU when available, or multi-threaded WASM otherwise, so no GPU is required.
-3. **Mood characterization**:
-   - **Local model**: three chunks spread across the page (or up to 24 in full text mode) are embedded with EmbeddingGemma and compared against a short description of every energy, mood, style and scene tag. Styles are also scored by how well they fit the detected moods and energy. The closest matches are sampled with a little randomness so repeat runs vary.
-   - **Gemini Nano**: the text is summarized with Chrome's [Summarizer API](https://developer.chrome.com/docs/ai/summarizer-api), then four focused prompts run via the [Prompt API](https://developer.chrome.com/docs/extensions/ai/prompt-api):
-   - **Energy**: one of `calm | mellow | moderate | driving | intense`
-   - **Moods**: 2 to 3 from a fixed pool (`melancholic`, `dreamy`, `nostalgic`, `aggressive`, ...)
-   - **Styles**: 2 genres from a fixed pool, chosen to differ in feel
-   - **Scenes**: 0 to 1 listening contexts (`study`, `late night`, `driving`, ...)
-4. **Retrieval (Last.fm)**: Top 3 tags are sent to [`tag.getTopTracks`](https://www.last.fm/api/show/tag.getTopTracks), paginating randomly across the first few pages. The pool is deduped (one track per artist) and sliced by listener-count based on the Discovery Range slider.
-5. **Resolution (iTunes Search)**: Each candidate resolves to a playable track via [Apple's iTunes Search API](https://performance-partners.apple.com/search-api), yielding an Apple Music URL, 300×300 artwork, 30-second preview MP3, and clean metadata. URLs are validated against an HTTPS Apple-host allowlist.
-6. **Surface**: The now-playing card builds direct Apple Music links and search URLs for Spotify, YouTube Music, and YouTube. Album art is downsampled to 32×32 and the dominant non-grayscale color becomes the UI accent.
-
-## Privacy & Security
-
-- **Local AI**: Mood characterization runs on-device, via Gemini Nano or the model bundled in the extension. The model is never downloaded at runtime.
-- **No accounts, no OAuth, no tracking.**
-- **External requests are limited to:**
-  - `ws.audioscrobbler.com` (Last.fm): sends only allowlisted mood/genre tags
-  - `itunes.apple.com` (search): sends only artist+track strings produced by Last.fm
-  - `*.mzstatic.com` (album artwork): image fetch only, for display and color sampling
-
-None of these endpoints ever receive your page content.
+Only tags and track names go to Last.fm and iTunes. There are no accounts and no tracking, and your page content never leaves the browser.
 
 ## Development
 
-### Project Structure
-
 ```
-tuned-in/
-├── sidepanel/              # Side panel UI and pipeline
-│   ├── index.html          # Side panel markup
-│   ├── index.css           # Design tokens, themes, animatable accent
-│   ├── index.js            # Pipeline orchestration
-│   ├── state.js            # chrome.storage.local state shape + helpers
-│   ├── summarizer.js       # Wraps Chrome Summarizer; load-progress events
-│   ├── llm.js              # Wraps Chrome Prompt API; 4-prompt classifier
-│   ├── localModel.js       # Client for the local model worker
-│   ├── localModelWorker.js # EmbeddingGemma tag classifier (any Chromium)
-│   ├── prototypes.js       # Tag descriptions the page is compared against
-│   ├── engine.js           # Picks Gemini Nano or the local model
-│   ├── tags.js             # Shared energy/mood/style/scene tag pools
-│   ├── music.js            # Last.fm + iTunes retrieval, filtering
-│   ├── ui.js               # Now-playing rendering, accent extraction
-│   ├── settings.js         # Settings panel handlers
-│   ├── history.js          # History list with previews
-│   └── logger.js           # Stage-aware console logger
-├── scripts/
-│   └── extract-content.js  # Content script for active tab
-├── tools/
-│   ├── fetch-model.mjs     # Downloads the local model at build time
-│   └── embed-prototypes.mjs # Precomputes tag embeddings at build time
-├── background.js           # Service worker, opens side panel
-├── manifest.json           # MV3 manifest
-└── rollup.config.mjs       # Build config
+sidepanel/
+  index.js              run pipeline (extract → analyse → pick → history)
+  engine.js             picks Gemini Nano or the local model
+  sampling.js           how much text each engine reads
+  summarizer.js, llm.js Gemini Nano (Summarizer + Prompt APIs)
+  localModel*.js        EmbeddingGemma worker
+  prototypes.js, tags.js tag pools and descriptions
+  music.js              Last.fm + iTunes lookup
+  ui.js, settings.js, history.js, state.js
+scripts/extract-content.js  content script
+tools/                  model download + tag embedding (run by the build)
 ```
 
-### Tech Stack
-
-- **Runtime**: Chrome Extension Manifest V3 (side panel)
-- **On-device AI**: Gemini Nano via Summarizer and Prompt APIs, or [Transformers.js](https://huggingface.co/docs/transformers.js) + EmbeddingGemma 300M on WebGPU/WASM
-- **Build**: Rollup
-- **APIs**: Last.fm, iTunes Search
-
-### Building
-
-```bash
-# Production build
-npm run build
-```
-
-The Gemini Nano path requires **Chrome 138+** on [supported hardware](https://developer.chrome.com/docs/ai/get-started#hardware). Without it, the extension uses the local model automatically.
-
-## Future Features
-
-| Feature | Description |
-| ------- | ----------- |
-| 🎚️ **Multi-track recommendations** | Return a short queue rather than a single track |
-| 🧠 **Listener feedback loop** | Use thumbs up/down to bias future tag selection |
+- Turn on **Settings → Advanced → Debug logging** to log each stage with timings to the side panel's DevTools console.
+- **Settings → Advanced → AI engine** forces Gemini Nano or the local model, so you can test either path.
 
 ## Contributing
 
-Contributions are welcome! Open an issue or submit a pull request. For major changes, please include a comment with decisions made.
-
-## Resources
-
-- [Chrome AI documentation](https://developer.chrome.com/docs/ai)
-- [Summarizer API reference](https://developer.chrome.com/docs/ai/summarizer-api)
-- [Prompt API reference](https://developer.chrome.com/docs/extensions/ai/prompt-api)
-- [Last.fm API](https://www.last.fm/api)
-- [iTunes Search API](https://performance-partners.apple.com/search-api)
-
+Issues and pull requests are welcome. For larger changes, describe the decisions you made in the PR.
 
 <div align="center">
 
-**Made with 💙 by [ClaytonWas](https://github.com/ClaytonWas)**
-
-[Report Bug/Request Feature](https://github.com/ClaytonWas/tuned-in/issues)
+Made with 💙 by [ClaytonWas](https://github.com/ClaytonWas) · [Report a bug or request a feature](https://github.com/ClaytonWas/tuned-in/issues)
 
 </div>

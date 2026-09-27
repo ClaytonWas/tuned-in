@@ -1,6 +1,6 @@
 {
   "name": "Tuned In",
-  "version": "4.0",
+  "version": "5.0",
   "manifest_version": 3,
   "description": "Get a music recommendation for any webpage using on-device AI. Works in Chrome, Edge, Brave and other Chromium browsers.",
   "icons": {
