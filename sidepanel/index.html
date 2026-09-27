@@ -3,90 +3,136 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="theme-init.js"></script>
     <link rel="stylesheet" type="text/css" href="index.css" />
   </head>
   <body>
+    <div class="paper" aria-hidden="true">
+      <div class="paper-mottle"></div>
+      <div class="paper-fibers paper-fibers--dark"></div>
+      <div class="paper-fibers paper-fibers--light"></div>
+    </div>
+
     <div class="container">
       <header class="header" id="dynamicIsland">
         <div class="header-main">
-          <span class="header-brand">Tuned In</span>
-          <button id="settingsButton" class="header-settings-btn" title="Settings" aria-label="Settings">⚙</button>
+          <span class="header-brand"><svg class="brand-mark" viewBox="768 214 442 634" aria-hidden="true">
+            <defs>
+              <linearGradient id="brandMarkGrad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" class="brand-mark__stop-a" />
+                <stop offset="1" class="brand-mark__stop-b" />
+              </linearGradient>
+              <mask id="brandMarkCut" maskUnits="userSpaceOnUse" x="600" y="100" width="800" height="900">
+                <rect x="600" y="100" width="800" height="900" fill="#fff" />
+                <g fill="#000" stroke="#000" stroke-width="30" stroke-linejoin="round">
+                  <path d="M1028 223 H1064 V492 H1028 Z" /><path d="M996 490 L1096 490 L1046 578 Z" />
+                </g>
+              </mask>
+            </defs>
+            <g class="brand-mark__notes" mask="url(#brandMarkCut)" stroke-width="6" stroke-linejoin="round">
+              <path d="M899 362 L1009 333 L1009 428 L941 445 L941 748 L899 748 Z" />
+              <ellipse cx="857" cy="767" rx="86" ry="71" transform="rotate(-28 857 767)" />
+              <path d="M1082 313 L1204 284 L1204 668 L1164 668 L1164 388 L1082 408 Z" />
+              <ellipse cx="1124" cy="681" rx="84" ry="70" transform="rotate(-28 1124 681)" />
+            </g>
+            <g class="brand-mark__arrow" stroke-width="10" stroke-linejoin="round">
+              <path d="M1028 223 H1064 V492 H1028 Z" stroke-width="0" /><path d="M996 490 L1096 490 L1046 578 Z" />
+            </g>
+          </svg>Tuned In</span>
+          <button id="settingsButton" class="header-settings-btn" title="Settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="17" x2="20" y2="17" />
+              <circle cx="9" cy="7" r="2.5" fill="currentColor" /><circle cx="15" cy="17" r="2.5" fill="currentColor" />
+            </svg>
+          </button>
         </div>
 
         <div id="settingsPanel" class="settings-panel" hidden>
           <div class="settings-content">
-            <div class="setting-item">
-              <label class="setting-label" for="themeToggle">Theme</label>
-              <button id="themeToggle" class="setting-btn">🌞 Light / 🌚 Dark</button>
-            </div>
 
-            <div class="setting-item">
-              <label class="setting-label" for="aiEngine">AI engine</label>
-              <select id="aiEngine" class="setting-control">
-                <option value="auto">Auto</option>
-                <option value="local">Local model (any browser)</option>
-                <option value="nano">Gemini Nano (Chrome only)</option>
-              </select>
-            </div>
+            <section class="setting-group">
+              <h3 class="setting-group-title">Appearance</h3>
 
-            <div class="setting-item">
-              <label class="checkbox-label">
-                <input type="checkbox" id="fullTextMode" />
-                <span>Full text mode</span>
-              </label>
-            </div>
-
-            <div class="setting-item">
-              <label class="setting-label" for="charLimit">Chunk size</label>
-              <div class="range-group">
-                <input type="range" id="charLimit" min="1000" max="10000" value="7500" step="500" />
-                <span id="charLimitValue" class="range-value">10000</span>
+              <div class="setting-row">
+                <span class="setting-name">Theme</span>
+                <div class="segmented" role="radiogroup" aria-label="Theme">
+                  <button type="button" class="segmented-btn" role="radio" data-theme-choice="light" aria-checked="false">Light</button>
+                  <button type="button" class="segmented-btn" role="radio" data-theme-choice="dark" aria-checked="false">Dark</button>
+                </div>
               </div>
-            </div>
 
-            <div class="setting-item">
-              <label class="setting-label">History limit</label>
-              <input type="number" id="historyLimit" class="setting-control" min="1" max="100" value="20" />
-            </div>
+              <label class="setting-row">
+                <span class="setting-name">Show scrollbar</span>
+                <input type="checkbox" id="showScrollbar" class="switch" />
+              </label>
+            </section>
 
-            <div class="setting-item">
-              <label class="setting-label">Discovery range</label>
-              <div class="range-slider-container">
+            <section class="setting-group">
+              <h3 class="setting-group-title">Recommendations</h3>
+
+              <div class="setting-row setting-row--stacked">
+                <span class="setting-name">Sample area <button type="button" class="info-dot" data-info="What the AI reads. Opening reads the start of the page, up to the opening length below: fastest, and usually enough for articles. Whole page reads all the text the extension pulls from the page (up to 20k chars): Gemini Nano summarises it in 10k-char pieces, and the local model reads it as up to 24 passages of 1.5k chars. Enter text reads text you paste into the box above the Generate button, the same way as Whole page." aria-label="About sample area"></button></span>
+                <div class="segmented segmented--full" role="radiogroup" aria-label="Sample area">
+                  <button type="button" class="segmented-btn" role="radio" data-sample-area="start" aria-checked="true">Opening</button>
+                  <button type="button" class="segmented-btn" role="radio" data-sample-area="full" aria-checked="false">Whole page</button>
+                  <button type="button" class="segmented-btn" role="radio" data-sample-area="text" aria-checked="false">Enter text</button>
+                </div>
+              </div>
+
+              <div class="setting-row setting-row--stacked" id="openingLengthRow">
+                <label class="setting-name" for="charLimit">Opening length <button type="button" class="info-dot" data-info="How much of the start of the page Opening reads. Gemini Nano summarises it in one pass. The local model reads it as 1.5k-char passages, one per step on this slider, so longer is slower on machines without a GPU." aria-label="About opening length"></button></label>
+                <div class="reading-slider">
+                  <input type="range" id="charLimit" min="1500" max="10500" value="4500" step="1500" aria-label="Opening length" />
+                  <span id="charLimitValue" class="setting-value">4.5k chars</span>
+                </div>
+              </div>
+
+              <div class="setting-row setting-row--stacked">
+                <div class="setting-row-head">
+                  <span class="setting-name">Discovery range <button type="button" class="info-dot" data-info="Candidate songs are ranked by how many Last.fm listeners they have, from 0 (least known) to 100 (most popular), and the pick comes from this slice. Pull the right handle down to avoid chart hits; pull the left handle down to include obscure tracks." aria-label="About discovery range"></button></span>
+                  <span class="setting-value"><span id="popularityMinValue">25</span>–<span id="popularityMaxValue">100</span></span>
+                </div>
                 <div class="range-slider">
-                  <input type="range" id="popularityMin" min="0" max="100" value="25" class="range-input range-min" />
-                  <input type="range" id="popularityMax" min="0" max="100" value="100" class="range-input range-max" />
+                  <input type="range" id="popularityMin" min="0" max="100" value="25" class="range-input range-min" aria-label="Minimum popularity" />
+                  <input type="range" id="popularityMax" min="0" max="100" value="100" class="range-input range-max" aria-label="Maximum popularity" />
                   <div class="range-track"></div>
                   <div class="range-fill"></div>
                 </div>
-                <div class="range-values">
-                  <span id="popularityMinValue">25</span>
-                  <span class="range-separator">–</span>
-                  <span id="popularityMaxValue">100</span>
+                <div class="range-ends"><span>Hidden gems</span><span>Hits</span></div>
+              </div>
+            </section>
+
+            <details class="setting-group setting-group--collapsible">
+              <summary class="setting-group-title">Advanced</summary>
+
+              <div class="setting-row">
+                <label class="setting-name" for="aiEngine">AI engine <button type="button" class="info-dot" data-info="Which on-device model reads the page. Gemini Nano is built into Chrome and writes a summary before picking a mood, but has to be installed. The local model ships with the extension and works in any Chromium browser. Auto uses Nano when it&rsquo;s ready and falls back to the local model. Changing this reloads the panel." aria-label="About AI engine"></button></label>
+                <select id="aiEngine" class="setting-select">
+                  <option value="auto">Auto</option>
+                  <option value="local">Local model</option>
+                  <option value="nano">Gemini Nano</option>
+                </select>
+              </div>
+
+              <div class="setting-row">
+                <label class="setting-name" for="historyLimit">Keep last <button type="button" class="info-dot" data-info="How many past recommendations are saved (3–1000). The oldest are removed once the list is full. History is stored only in this browser." aria-label="About history limit"></button></label>
+                <input type="number" id="historyLimit" class="setting-number" min="3" max="1000" value="20" />
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-name">Your data <button type="button" class="info-dot" data-info="Export downloads your history as a JSON file. Clear permanently deletes every saved recommendation; you&rsquo;ll be asked to confirm first." aria-label="About your data"></button></span>
+                <div class="setting-buttons">
+                  <button id="exportHistory" class="holo-pill holo-pill--sm"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">Export</span></button>
+                  <button id="clearHistory" class="holo-pill holo-pill--sm setting-btn-danger"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">Clear</span></button>
                 </div>
               </div>
-            </div>
 
-            <div class="setting-item">
-              <label class="setting-label">History</label>
-              <div class="setting-buttons">
-                <button id="exportHistory" class="setting-btn">Export</button>
-                <button id="clearHistory" class="setting-btn setting-btn-danger">Clear</button>
-              </div>
-            </div>
-
-            <div class="setting-item">
-              <label class="checkbox-label">
-                <input type="checkbox" id="showScrollbar" />
-                <span>Show scrollbar</span>
+              <label class="setting-row">
+                <span class="setting-name">Debug logging <button type="button" class="info-dot" data-info="Writes each step (model loading, summaries, timings and the genres chosen) to the DevTools console. Useful for bug reports; leave it off otherwise." aria-label="About debug logging"></button></span>
+                <input type="checkbox" id="debugMode" class="switch" />
               </label>
-            </div>
+            </details>
 
-            <div class="setting-item">
-              <label class="checkbox-label">
-                <input type="checkbox" id="debugMode" />
-                <span>Debug logging</span>
-              </label>
-            </div>
           </div>
         </div>
       </header>
@@ -95,10 +141,22 @@
       <main class="main">
         <!-- Now Playing Section -->
         <section class="now-playing-section">
+          <!-- Own text, shown when Sample area is set to Enter text -->
+          <textarea
+            id="customTextArea"
+            class="custom-text-area"
+            rows="5"
+            hidden
+            aria-label="Text to analyze"
+            placeholder="Paste any text and the AI will analyze its musical energy."></textarea>
+
           <!-- Generate Button -->
-          <button id="summarizeButton" class="generate-btn">
-            <span class="generate-btn-icon">✦</span>
-            <span class="generate-btn-text">Generate Recommendation</span>
+          <button id="summarizeButton" class="generate-btn holo-pill holo-pill--active">
+            <span class="holo-pill__shine" aria-hidden="true"></span>
+            <span class="holo-pill__label">
+              <span class="generate-btn-icon">✦</span>
+              <span class="generate-btn-text">Generate recommendation</span>
+            </span>
           </button>
 
           <!-- Model warmup status -->
@@ -133,19 +191,6 @@
             </div>
           </div>
 
-          <!-- Custom text input (collapsible) -->
-          <details id="customTextDetails" class="custom-text">
-            <summary class="custom-text-summary">Use Your Own Text</summary>
-            <div class="custom-text-body">
-              <textarea
-                id="customTextArea"
-                class="custom-text-area"
-                rows="5"
-                placeholder="Paste any text and the AI will analyze its musical energy."></textarea>
-              <button id="customTextSubmit" class="custom-text-btn">Generate from this text</button>
-            </div>
-          </details>
-
           <!-- Warning (compact) -->
           <div id="warning" hidden class="warning-banner"></div>
 
@@ -156,8 +201,17 @@
                 <a id="albumCoverLink" href="#" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">
                   <img id="albumCover" src="" alt="Album cover" class="album-art" />
                 </a>
+                <button id="previewButton" type="button" class="preview-btn" aria-label="Play preview" title="Play preview" hidden>
+                  <svg class="preview-btn__play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" fill="currentColor" /></svg>
+                  <svg class="preview-btn__pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" /><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" /></svg>
+                </button>
               </div>
               <div class="now-playing-details">
+                <div class="now-playing-status" aria-live="polite">
+                  <span id="nowPlayingStatusWord" class="now-playing-status-word">Reading page</span>
+                  <span id="nowPlayingStatusTitle" class="now-playing-status-title"></span>
+                  <div class="now-playing-progress"><div id="nowPlayingProgressFill" class="now-playing-progress-fill"></div></div>
+                </div>
                 <a id="trackLink" href="#" target="_blank" rel="noopener noreferrer" class="now-playing-link">
                   <div class="now-playing-track">
                     <h3 id="trackName" class="track-name">—</h3>
@@ -166,18 +220,13 @@
                     <p id="trackArtist" class="track-artist">—</p>
                   </div>
                 </a>
-                <div class="now-playing-meta">
-                  <span class="meta-tag" id="musicGenres">-</span>
-                  <span class="meta-divider">•</span>
-                  <span class="meta-tag"><span id="musicBpm">-</span></span>
+                <div class="streaming-links">
+                  <a id="appleMusicLink" class="streaming-link holo-pill" href="#" target="_blank" rel="noopener noreferrer"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">Apple Music</span></a>
+                  <a id="spotifyLink" class="streaming-link holo-pill" href="#" target="_blank" rel="noopener noreferrer"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">Spotify</span></a>
+                  <a id="ytMusicLink" class="streaming-link holo-pill" href="#" target="_blank" rel="noopener noreferrer"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">YT Music</span></a>
+                  <a id="youtubeLink" class="streaming-link holo-pill" href="#" target="_blank" rel="noopener noreferrer"><span class="holo-pill__shine" aria-hidden="true"></span><span class="holo-pill__label">YouTube</span></a>
                 </div>
               </div>
-            </div>
-            <div class="streaming-links">
-              <a id="appleMusicLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">Apple Music</a>
-              <a id="spotifyLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">Spotify</a>
-              <a id="ytMusicLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">YT Music</a>
-              <a id="youtubeLink" class="streaming-link" href="#" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
           </div>
         </section>
@@ -192,6 +241,8 @@
         </div>
       </main>
     </div>
+
+    <div id="settingTooltip" class="setting-tooltip" role="tooltip" hidden></div>
 
     <script src="index.js"></script>
   </body>

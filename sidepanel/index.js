@@ -1,4 +1,4 @@
-import { state, loadState } from './state.js';
+import { state, loadSettings, loadHistory } from './state.js';
 import { generateSummary, getSharedSummarizer, onSummarizerProgress } from './summarizer.js';
 import { analyzePageForMusic, ensurePromptSession, onPromptProgress } from './llm.js';
 import { analyzeLocally, ensureLocalModel, onLocalModelProgress } from './localModel.js';
@@ -6,11 +6,15 @@ import { resolveEngine } from './engine.js';
 import { getRecommendedTrack } from './music.js';
 import { renderHistory, showSkeletonHistory, addToHistory, trimHistory } from './history.js';
 import { setupSettings } from './settings.js';
-import { setupSettingsToggle, updateWarning, renderNowPlaying, hideNowPlaying } from './ui.js';
-import { addProcessCard, updateProcessCard } from './processCards.js';
+import {
+  setupSettingsToggle, setupHoloPills, setupPreviewPlayer, updateWarning, renderNowPlaying,
+  startNowPlayingLoading, setNowPlayingProgress, cancelNowPlayingLoading,
+} from './ui.js';
 import * as log from './logger.js';
 
 let isAnalyzing = false;
+// Set in init(); new entries wait on it so they never save over a history that hasn't loaded yet
+let historyLoaded = Promise.resolve();
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -106,10 +110,11 @@ async function handleGenerate(override) {
   if (isAnalyzing) return;
   isAnalyzing = true;
   updateWarning('');
-  hideNowPlaying();
 
   const forcedContent = typeof override?.content === 'string' ? override.content.trim() : '';
   const isCustomText = forcedContent.length > 0;
+  // Pasted text is read in full, like Whole page; only Opening cuts the input short
+  const fullTextMode = isCustomText || state.sampleArea === 'full';
 
   let pageTitle = 'Unknown Page';
   let pageUrl = '#';
@@ -133,11 +138,11 @@ async function handleGenerate(override) {
   log.stage('▶ Run started', {
     pageTitle,
     pageUrl,
-    fullTextMode: state.fullTextMode,
+    sampleArea: state.sampleArea,
     source: isCustomText ? 'custom-text' : 'active-tab',
   });
 
-  const processId = addProcessCard('recommend', 'Generating Recommendation', pageTitle);
+  startNowPlayingLoading(pageTitle);
 
   let content = '';
   if (isCustomText) {
@@ -177,23 +182,26 @@ async function handleGenerate(override) {
           msg = 'No content could be extracted from this page.';
       }
       updateWarning(msg);
-      updateProcessCard(processId, { progress: 100, status: 'error' });
+      cancelNowPlayingLoading();
       log.warn(`extract aborted: ${extractResult.reason}`, { error: extractResult.error });
       isAnalyzing = false;
       return;
     }
   }
 
-  updateProcessCard(processId, { progress: 0, status: 'running' });
   let progress = 0;
   let tick = null;
+  // Creeps toward 90 while the model works; the last stretch is the song lookup
   const startTicking = (from) => {
     progress = from;
     tick = setInterval(() => {
-      progress = Math.min(100, progress + 2);
-      updateProcessCard(processId, { progress, status: 'running' });
+      progress = Math.min(90, progress + 2);
+      setNowPlayingProgress(progress);
     }, 100);
   };
+
+  // What the AI reads: Opening cuts the page to the opening length, the other modes take it all
+  const readText = fullTextMode ? content : content.slice(0, state.charLimit);
 
   let engine = await resolveEngine();
   let summary = '';
@@ -201,10 +209,10 @@ async function handleGenerate(override) {
 
   if (engine === 'nano') {
     const summaryTimer = log.timer('2. summarize');
-    summary = await generateSummary(content, state.fullTextMode, (p) => {
-      updateProcessCard(processId, { progress: p, status: 'running' });
+    summary = await generateSummary(readText, fullTextMode, (p) => {
+      setNowPlayingProgress(p);
     });
-    summaryTimer.end({ inputChars: content.length, outputChars: summary.length, output: summary });
+    summaryTimer.end({ inputChars: readText.length, outputChars: summary.length, output: summary });
 
     if (summary.startsWith('Error:')) {
       log.warn('Gemini Nano summarizer unavailable; falling back to local model', summary);
@@ -219,10 +227,10 @@ async function handleGenerate(override) {
     analysis = await analyzePageForMusic(summary);
   } else {
     startTicking(10);
-    const input = state.fullTextMode ? content : content.slice(0, state.charLimit);
-    analysis = await analyzeLocally(input, state.fullTextMode);
+    analysis = await analyzeLocally(readText, fullTextMode);
   }
   clearInterval(tick);
+  setNowPlayingProgress(90);
   analysisTimer.end({
     energy: analysis.energy,
     tags: analysis.tags,
@@ -240,16 +248,16 @@ async function handleGenerate(override) {
       trackViewUrl: track.trackViewUrl,
     } : { result: 'null — no track resolved' });
 
-    updateProcessCard(processId, { progress: 100, status: 'done' });
-
     if (!track) {
+      cancelNowPlayingLoading();
       updateWarning('Could not find a matching track.');
       log.warn('no track resolved for analysis', analysis);
       runTimer.end({ result: 'no-track' });
       return;
     }
 
-    renderNowPlaying(track, analysis);
+    renderNowPlaying(track);
+    await historyLoaded;
     addToHistory({
       trackName: track.name,
       trackArtist: track.artist,
@@ -262,13 +270,15 @@ async function handleGenerate(override) {
       energy: analysis.energy,
       pageUrl,
       pageTitle,
-      extractedContent: content,
+      extractedContent: readText,
+      pageChars: content.length,
+      sampleArea: isCustomText ? 'text' : state.sampleArea,
       summary,
     });
     runTimer.end({ result: 'ok', track: `${track.artist} — ${track.name}` });
   } catch (e) {
     console.error('Error fetching track:', e);
-    updateProcessCard(processId, { progress: 100, status: 'error' });
+    cancelNowPlayingLoading();
     updateWarning('Error fetching track.');
     log.error('pick stage threw', e);
     runTimer.end({ result: 'error' });
@@ -421,18 +431,25 @@ async function warmupModels() {
 }
 
 async function init() {
-  await loadState();
+  historyLoaded = loadHistory();
   showSkeletonHistory();
-  trimHistory();
+  await loadSettings();
+
+  // Model loading is the slowest part of opening the panel, so start it before building the UI.
+  // Fire-and-forget: it reports progress into the status card and doesn't block anything.
+  warmupModels();
+
   setupSettings();
   setupSettingsToggle();
+  setupHoloPills();
+  setupPreviewPlayer();
 
-  document.querySelector('#summarizeButton').addEventListener('click', () => handleGenerate());
-
-  const customSubmit = document.querySelector('#customTextSubmit');
-  const customArea = document.querySelector('#customTextArea');
-  customSubmit?.addEventListener('click', () => {
-    const value = customArea?.value || '';
+  document.querySelector('#summarizeButton').addEventListener('click', () => {
+    if (state.sampleArea !== 'text') {
+      handleGenerate();
+      return;
+    }
+    const value = document.querySelector('#customTextArea')?.value || '';
     if (!value.trim()) {
       updateWarning('Paste some text first.');
       return;
@@ -440,10 +457,9 @@ async function init() {
     handleGenerate({ content: value });
   });
 
+  await historyLoaded;
+  trimHistory();
   renderHistory();
-
-  // Fire-and-forget: warm both models in the background. Doesn't block UI.
-  warmupModels();
 }
 
 init();

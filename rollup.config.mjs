@@ -18,7 +18,7 @@ const sidepanel = {
         { src: 'background.js', dest: 'dist' },
         { src: 'images', dest: 'dist' },
         { src: 'scripts', dest: 'dist' },
-        { src: ['sidepanel/index.html', 'sidepanel/index.css'], dest: 'dist/sidepanel' },
+        { src: ['sidepanel/index.html', 'sidepanel/index.css', 'sidepanel/theme-init.js'], dest: 'dist/sidepanel' },
         { src: 'models', dest: 'dist' },
         {
           src: [

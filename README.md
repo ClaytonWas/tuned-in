@@ -161,7 +161,6 @@ tuned-in/
 │   ├── ui.js               # Now-playing rendering, accent extraction
 │   ├── settings.js         # Settings panel handlers
 │   ├── history.js          # History list with previews
-│   ├── processCards.js     # Progress card UI
 │   └── logger.js           # Stage-aware console logger
 ├── scripts/
 │   └── extract-content.js  # Content script for active tab

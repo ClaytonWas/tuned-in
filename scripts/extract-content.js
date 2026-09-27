@@ -14,6 +14,15 @@
   const JUNK_PATTERN = /^(cookie|privacy|policy|terms|consent|advert|sponsored|share|subscribe|sign\s?up|log\s?in|register|menu|search|skip\s+to|related\s+articles|read\s+more|comments?)\b/i;
   const NEGATIVE_CLASS = /\b(nav|menu|sidebar|footer|header|comment|cookie|consent|banner|promo|advert|ad-|popup|modal|share|social|related|recommend|hidden|tooltip|breadcrumb)\b/i;
   const POSITIVE_CLASS = /\b(article|content|post|story|entry|main|body|prose|markdown)\b/i;
+  // Dropped while collecting a block's text: citation markers (<sup>[1]</sup>), figures and data
+  // tables like Wikipedia infoboxes, whose cells run together into noise without their layout.
+  const TEXT_SKIP_TAGS = new Set(['sup', 'figure', 'table', 'math']);
+  // Inline tags flow with the surrounding words; anything else (cells, divs, <br>) gets a space around it.
+  const INLINE_TAGS = new Set([
+    'a', 'abbr', 'b', 'bdi', 'bdo', 'cite', 'code', 'data', 'dfn', 'em', 'i', 'kbd', 'mark',
+    'q', 's', 'samp', 'small', 'span', 'strong', 'sub', 'time', 'u', 'var',
+  ]);
+  const NOISE_PATTERN = /\[(?:\d+|[a-z]|edit|citation needed|note \d+)\]/gi;
 
   function clip(text) {
     return text.length > MAX_OUTPUT ? text.slice(0, MAX_OUTPUT) : text;
@@ -75,13 +84,65 @@
     return true;
   }
 
+  function skipsText(el) {
+    const tag = el.tagName.toLowerCase();
+    if (SKIP_TAGS.has(tag)) return true;
+    if (TEXT_SKIP_TAGS.has(tag) && !(tag === 'table' && el.getAttribute('role') === 'presentation')) return true;
+    if (el.hidden || el.getAttribute('aria-hidden') === 'true') return true;
+    return false;
+  }
+
+  // A block's own readable text. textContent would also pull in <style>/<script> bodies and the
+  // text of nested blocks, which are collected separately, so the page ends up read twice.
+  function ownText(root) {
+    const parts = [];
+    let linkLen = 0;
+    const walk = (node, inLink) => {
+      for (let c = node.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === Node.TEXT_NODE) {
+          const t = c.nodeValue;
+          if (!t || !t.trim()) continue;
+          parts.push(t);
+          if (inLink) linkLen += t.length;
+        } else if (c.nodeType === Node.ELEMENT_NODE) {
+          if (skipsText(c) || BLOCK_TAGS.has(c.tagName.toLowerCase())) continue;
+          const gap = INLINE_TAGS.has(c.tagName.toLowerCase()) ? '' : ' ';
+          parts.push(gap);
+          walk(c, inLink || c.tagName === 'A');
+          parts.push(gap);
+        }
+      }
+    };
+    walk(root, false);
+    return { text: safeText(parts.join('').replace(NOISE_PATTERN, '')), linkLen };
+  }
+
   function blockText(el) {
-    const linkLen = Array.from(el.querySelectorAll('a'))
-      .reduce((n, a) => n + (a.textContent || '').length, 0);
-    const txt = safeText(el.textContent || '');
-    if (txt.length < MIN_BLOCK_LEN) return '';
-    if (linkLen / Math.max(1, txt.length) > 0.5) return '';
-    return txt;
+    const { text, linkLen } = ownText(el);
+    if (text.length < MIN_BLOCK_LEN) return '';
+    if (linkLen / Math.max(1, text.length) > 0.5) return '';
+    return text;
+  }
+
+  // Walks the blocks under root in page order, skipping hidden or non-text subtrees and repeats.
+  function collectBlocks(root) {
+    const chunks = [];
+    const seen = new Set();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(n) {
+        if (skipsText(n) || !isVisible(n)) return NodeFilter.FILTER_REJECT;
+        if (!BLOCK_TAGS.has(n.tagName.toLowerCase())) return NodeFilter.FILTER_SKIP;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    let n;
+    while ((n = walker.nextNode())) {
+      const t = blockText(n);
+      if (!t || JUNK_PATTERN.test(t) || seen.has(t)) continue;
+      seen.add(t);
+      chunks.push(t);
+    }
+    return chunks.join('\n');
   }
 
   function densityExtract() {
@@ -123,39 +184,12 @@
     }
     if (!bestEl) return '';
 
-    const chunks = [];
-    const inner = document.createTreeWalker(bestEl, NodeFilter.SHOW_ELEMENT, {
-      acceptNode(n) {
-        if (SKIP_TAGS.has(n.tagName.toLowerCase())) return NodeFilter.FILTER_REJECT;
-        if (!BLOCK_TAGS.has(n.tagName.toLowerCase())) return NodeFilter.FILTER_SKIP;
-        return NodeFilter.FILTER_ACCEPT;
-      },
-    });
-    let b;
-    while ((b = inner.nextNode())) {
-      const t = blockText(b);
-      if (t && !JUNK_PATTERN.test(t)) chunks.push(t);
-    }
-    return chunks.join('\n');
+    return collectBlocks(bestEl);
   }
 
   function semanticExtract() {
     const article = document.querySelector('article, main, [role="main"]');
-    if (!article) return '';
-    const chunks = [];
-    const walker = document.createTreeWalker(article, NodeFilter.SHOW_ELEMENT, {
-      acceptNode(n) {
-        if (SKIP_TAGS.has(n.tagName.toLowerCase())) return NodeFilter.FILTER_REJECT;
-        if (!BLOCK_TAGS.has(n.tagName.toLowerCase())) return NodeFilter.FILTER_SKIP;
-        return NodeFilter.FILTER_ACCEPT;
-      },
-    });
-    let n;
-    while ((n = walker.nextNode())) {
-      const t = blockText(n);
-      if (t && !JUNK_PATTERN.test(t)) chunks.push(t);
-    }
-    return chunks.join('\n');
+    return article ? collectBlocks(article) : '';
   }
 
   function extractYouTube() {

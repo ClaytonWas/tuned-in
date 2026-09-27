@@ -1,18 +1,33 @@
 import { state, saveState } from './state.js';
+import { PASSAGE_CHARS, OPENING_MIN, OPENING_MAX, clampOpening } from './sampling.js';
 import { renderHistory, trimHistory, exportHistory, clearHistory } from './history.js';
 
-const THEME_ORDER = ['light', 'dark', 'forest'];
-const THEME_LABELS = {
-  light: '🌞 Light',
-  dark: '🌚 Dark',
-  forest: '🌲 Forest',
-};
+const THEMES = ['light', 'dark'];
 
-export function applyTheme() {
+export function applyTheme({ animate = false } = {}) {
   const root = document.documentElement;
-  root.classList.remove('theme-light', 'theme-dark', 'theme-forest');
-  const mode = THEME_ORDER.includes(state.themeMode) ? state.themeMode : 'light';
-  root.classList.add(`theme-${mode}`);
+  // Anything else (e.g. the retired 'forest' theme) falls back to light
+  const mode = THEMES.includes(state.themeMode) ? state.themeMode : 'light';
+  const swap = () => {
+    root.classList.remove('theme-light', 'theme-dark', 'theme-forest');
+    root.classList.add(`theme-${mode}`);
+  };
+
+  if (root.classList.contains(`theme-${mode}`)) {
+    // Already painted by theme-init.js
+  } else if (animate && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // One snapshot crossfade on the compositor instead of every element fading its own colours
+    root.classList.add('theme-switching');
+    document.startViewTransition(swap).finished.finally(() => root.classList.remove('theme-switching'));
+  } else {
+    swap();
+  }
+  // Mirrored for theme-init.js, which applies it before first paint on the next open
+  try {
+    localStorage.setItem('themeMode', mode);
+  } catch {
+    /* blocked storage — the panel just paints the default theme first */
+  }
 }
 
 export function applyScrollbar() {
@@ -20,41 +35,136 @@ export function applyScrollbar() {
 }
 
 function setupTheme() {
-  const toggle = document.getElementById('themeToggle');
-  if (!toggle) return;
-  const label = () => {
-    toggle.textContent = THEME_LABELS[state.themeMode] || THEME_LABELS.light;
+  const buttons = document.querySelectorAll('[data-theme-choice]');
+  const sync = () => {
+    const mode = THEMES.includes(state.themeMode) ? state.themeMode : 'light';
+    for (const b of buttons) b.setAttribute('aria-checked', String(b.dataset.themeChoice === mode));
   };
-  label();
-  toggle.addEventListener('click', () => {
-    const idx = THEME_ORDER.indexOf(state.themeMode);
-    const next = THEME_ORDER[(idx + 1) % THEME_ORDER.length];
-    saveState({ themeMode: next });
-    applyTheme();
-    label();
-  });
+  sync();
+  for (const b of buttons) {
+    b.addEventListener('click', () => {
+      saveState({ themeMode: b.dataset.themeChoice });
+      applyTheme({ animate: true });
+      sync();
+    });
+  }
 }
 
-function setupCharLimit(onChange) {
+// One shared tooltip for every info dot. It's position: fixed and placed from the dot's
+// rect, so it never gets clipped by the scrolling settings dropdown.
+function setupInfoDots() {
+  const tip = document.getElementById('settingTooltip');
+  const panel = document.getElementById('settingsPanel');
+  if (!tip || !panel) return;
+  let current = null;
+  let pinned = false;
+
+  const show = (dot) => {
+    current?.removeAttribute('aria-describedby');
+    current = dot;
+    tip.textContent = dot.dataset.info;
+    tip.hidden = false;
+    dot.setAttribute('aria-describedby', tip.id);
+
+    const r = dot.getBoundingClientRect();
+    const margin = 8;
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const left = Math.min(Math.max(margin, r.left + r.width / 2 - w / 2), window.innerWidth - w - margin);
+    const below = r.bottom + 6;
+    const top = below + h > window.innerHeight - margin ? r.top - h - 6 : below;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  };
+  const hide = () => {
+    current?.removeAttribute('aria-describedby');
+    current = null;
+    pinned = false;
+    tip.hidden = true;
+  };
+
+  panel.addEventListener('mouseover', (e) => {
+    const dot = e.target.closest('.info-dot');
+    if (dot && !pinned) show(dot);
+  });
+  panel.addEventListener('mouseout', (e) => {
+    if (e.target.closest('.info-dot') && !pinned) hide();
+  });
+  panel.addEventListener('focusin', (e) => {
+    const dot = e.target.closest('.info-dot');
+    if (dot) show(dot);
+  });
+  panel.addEventListener('focusout', (e) => {
+    if (e.target.closest('.info-dot')) hide();
+  });
+  panel.addEventListener('click', (e) => {
+    const dot = e.target.closest('.info-dot');
+    if (!dot) return;
+    // Several dots sit inside a <label>; don't let the click flip its switch
+    e.preventDefault();
+    if (pinned && current === dot) {
+      hide();
+    } else {
+      show(dot);
+      pinned = true;
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.contains(e.target)) hide();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hide();
+  });
+  panel.addEventListener('scroll', hide, { passive: true });
+  document.getElementById('settingsButton')?.addEventListener('click', hide);
+}
+
+const SAMPLE_AREAS = ['start', 'full', 'text'];
+
+// Opening / Whole page / Enter text. Enter text swaps the page read for the text box above
+// the Generate button, so that box only exists in that mode.
+export function applySampleArea() {
+  const mode = SAMPLE_AREAS.includes(state.sampleArea) ? state.sampleArea : 'start';
+  for (const b of document.querySelectorAll('[data-sample-area]')) {
+    b.setAttribute('aria-checked', String(b.dataset.sampleArea === mode));
+  }
+  const area = document.querySelector('#customTextArea');
+  if (area) area.hidden = mode !== 'text';
+  // Opening length only applies to Opening; the other modes read the whole text
+  const openingRow = document.querySelector('#openingLengthRow');
+  if (openingRow) openingRow.hidden = mode !== 'start';
+  const label = document.querySelector('.generate-btn-text');
+  if (label) label.textContent = mode === 'text' ? 'Generate from your text' : 'Generate recommendation';
+}
+
+function setupSampleArea(onChange) {
+  applySampleArea();
+  for (const b of document.querySelectorAll('[data-sample-area]')) {
+    b.addEventListener('click', () => {
+      saveState({ sampleArea: b.dataset.sampleArea });
+      applySampleArea();
+      onChange?.();
+    });
+  }
+}
+
+function setupChunkSize(onChange) {
   const input = document.querySelector('#charLimit');
   const value = document.querySelector('#charLimitValue');
   if (!input || !value) return;
-  input.value = state.charLimit;
-  value.textContent = state.charLimit;
-  input.addEventListener('input', (e) => {
-    const v = parseInt(e.target.value, 10);
-    value.textContent = v;
-    saveState({ charLimit: v });
-    onChange?.();
-  });
-}
 
-function setupFullTextMode(onChange) {
-  const cb = document.querySelector('#fullTextMode');
-  if (!cb) return;
-  cb.checked = state.fullTextMode;
-  cb.addEventListener('change', (e) => {
-    saveState({ fullTextMode: e.target.checked });
+  const sync = () => {
+    const n = state.charLimit;
+    value.textContent = `${(n / 1000).toFixed(n % 1000 ? 1 : 0)}k chars`;
+  };
+  input.min = OPENING_MIN;
+  input.max = OPENING_MAX;
+  input.step = PASSAGE_CHARS;
+  input.value = state.charLimit;
+  sync();
+  input.addEventListener('input', (e) => {
+    saveState({ charLimit: clampOpening(parseInt(e.target.value, 10)) });
+    sync();
     onChange?.();
   });
 }
@@ -154,8 +264,9 @@ export function setupSettings(onContentRelevantChange) {
   applyTheme();
   applyScrollbar();
   setupTheme();
-  setupCharLimit(onContentRelevantChange);
-  setupFullTextMode(onContentRelevantChange);
+  setupInfoDots();
+  setupSampleArea(onContentRelevantChange);
+  setupChunkSize(onContentRelevantChange);
   setupHistoryLimit();
   setupScrollbar();
   setupDebugMode();

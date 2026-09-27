@@ -1,16 +1,15 @@
 import { AutoModel, AutoTokenizer, env } from '@huggingface/transformers';
 import { composeTags } from './tags.js';
 import { MODEL_ID, TASK_PREFIX, PROTOTYPE_SETS, prototypeText } from './prototypes.js';
+import { PASSAGE_CHARS, OPENING_MAX, WHOLE_TEXT_PASSAGES } from './sampling.js';
 
 // Browser-agnostic fallback for Gemini Nano: EmbeddingGemma (300M params, 4-bit, ~200MB) bundled
 // with the extension (no Chrome-only APIs, multilingual). Runs in this worker so inference never
 // blocks the side panel; uses WebGPU when available and threaded WASM otherwise. Tags are picked by
 // cosine similarity between the page text and a short description of each tag.
-// Three chunks spread across the page agree with a full 10k-char read on mood/genre ~96% of the
-// time at under half the compute, which matters on CPU-only machines.
-const CHUNK_CHARS = 1500;
-const MAX_CHUNKS = 3;
-const MAX_CHUNKS_FULL = 24;
+// Opening text arrives already cut to the Opening length, so every passage of it is read; whole
+// text is sampled as evenly spaced passages. Passage size and counts live in sampling.js.
+const MAX_CHUNKS = Math.ceil(OPENING_MAX / PASSAGE_CHARS);
 const EMBED_BATCH = 4;
 // How much a style's fit with the detected moods/energy counts versus its direct match with the text.
 const AFFINITY_WEIGHT = 0.3;
@@ -217,9 +216,9 @@ function normalize(v) {
 }
 
 function chunkEvenly(text, fullTextMode) {
-  const max = fullTextMode ? MAX_CHUNKS_FULL : MAX_CHUNKS;
+  const max = fullTextMode ? WHOLE_TEXT_PASSAGES : MAX_CHUNKS;
   const all = [];
-  for (let i = 0; i < text.length; i += CHUNK_CHARS) all.push(text.slice(i, i + CHUNK_CHARS));
+  for (let i = 0; i < text.length; i += PASSAGE_CHARS) all.push(text.slice(i, i + PASSAGE_CHARS));
   if (all.length <= max) return all;
   const step = all.length / max;
   return Array.from({ length: max }, (_, i) => all[Math.floor(i * step)]);

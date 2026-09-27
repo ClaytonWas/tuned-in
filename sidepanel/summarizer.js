@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import * as log from './logger.js';
+import { NANO_CHUNK_CHARS } from './sampling.js';
 
 let sharedSummarizer = null;
 let initPromise = null;
@@ -88,7 +89,8 @@ export async function generateSummary(text, fullTextMode, onProgress) {
   const summarizer = await getSharedSummarizer();
   if (!summarizer) return 'Error: Summarizer not available';
 
-  const limit = state.charLimit;
+  // Opening: one pass over the opening length. Whole text: fixed-size pieces, summarised then combined.
+  const limit = fullTextMode ? NANO_CHUNK_CHARS : state.charLimit;
 
   if (fullTextMode && text.length > limit) {
     const chunks = chunkText(text, limit);

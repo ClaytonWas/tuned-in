@@ -1,7 +1,10 @@
 import { state, saveState } from './state.js';
+import { streamingSearchUrls } from './ui.js';
+import { MAX_PAGE_CHARS } from './sampling.js';
 
 const MAX_FIELD = 300;
-const MAX_EXTRACT = 4000;
+// Room for everything the AI can read (a whole extracted page); needs unlimitedStorage at 1000 entries
+const MAX_EXTRACT = MAX_PAGE_CHARS;
 const MAX_SUMMARY = 2000;
 const HTTPS_HOST_ALLOWLIST = /^https:\/\/(music\.apple\.com|itunes\.apple\.com|[a-z0-9.-]+\.mzstatic\.com|audio-ssl\.itunes\.apple\.com)(\/|$)/i;
 
@@ -55,6 +58,7 @@ function el(tag, opts = {}) {
   if (opts.src) node.setAttribute('src', opts.src);
   if (opts.alt !== undefined) node.setAttribute('alt', opts.alt);
   if (opts.loading) node.setAttribute('loading', opts.loading);
+  if (opts.decoding) node.setAttribute('decoding', opts.decoding);
   if (opts.controls) node.setAttribute('controls', '');
   if (opts.preload) node.setAttribute('preload', opts.preload);
   return node;
@@ -109,7 +113,7 @@ function renderItem(item) {
   const artwork = el('div', { className: 'history-artwork' });
   if (artSrc) {
     const a = el('a', { href: trackHref || '#', target: '_blank', rel: 'noopener noreferrer' });
-    a.appendChild(el('img', { src: artSrc, alt: 'Album cover', loading: 'lazy' }));
+    a.appendChild(el('img', { src: artSrc, alt: 'Album cover', loading: 'lazy', decoding: 'async' }));
     artwork.appendChild(a);
   }
   content.appendChild(artwork);
@@ -125,13 +129,14 @@ function renderItem(item) {
   details.appendChild(artistRow);
 
   const meta = el('div', { className: 'history-meta' });
-  meta.appendChild(el('span', { text: tags.join(', ') }));
+  meta.appendChild(el('span', { text: `Genres: ${tags.join(', ')}` }));
   meta.appendChild(el('span', { text: '•' }));
-  meta.appendChild(el('span', { text: energy }));
+  meta.appendChild(el('span', { text: `Energy: ${energy}` }));
   details.appendChild(meta);
 
   content.appendChild(details);
   li.appendChild(content);
+  li.appendChild(buildStreamingLinks(trackName, trackArtist, trackHref));
 
   const source = el('div', { className: 'source-link' });
   source.appendChild(el('span', { className: 'source-label', text: 'Source:' }));
@@ -163,7 +168,7 @@ function renderItem(item) {
   detailsContent.appendChild(rowArtist);
 
   const rowTags = el('div', { className: 'details-row' });
-  rowTags.appendChild(el('span', { className: 'details-label', text: 'Tags:' }));
+  rowTags.appendChild(el('span', { className: 'details-label', text: 'Genres:' }));
   rowTags.appendChild(el('span', { text: tags.join(', ') }));
   detailsContent.appendChild(rowTags);
 
@@ -173,7 +178,7 @@ function renderItem(item) {
   detailsContent.appendChild(rowEnergy);
 
   if (typeof item.extractedContent === 'string' && item.extractedContent.length > 0) {
-    detailsContent.appendChild(buildContentBlock('Scanned from page', item.extractedContent, item.extractedTruncated));
+    detailsContent.appendChild(buildContentBlock('Read by AI', item.extractedContent, item.extractedTruncated, readMeta(item)));
   }
   if (typeof item.summary === 'string' && item.summary.length > 0) {
     detailsContent.appendChild(buildContentBlock('Summary fed to AI', item.summary, item.summaryTruncated));
@@ -185,40 +190,82 @@ function renderItem(item) {
   return li;
 }
 
-function buildContentBlock(label, body, truncated) {
+const STREAMING_SERVICES = [
+  ['apple', 'Apple Music'],
+  ['spotify', 'Spotify'],
+  ['ytMusic', 'YT Music'],
+  ['youtube', 'YouTube'],
+];
+
+// Same four services as the now-playing card, rebuilt from the saved track so older entries get them too
+function buildStreamingLinks(trackName, trackArtist, appleMusicHref) {
+  const urls = streamingSearchUrls(trackName, trackArtist, appleMusicHref);
+  const row = el('div', { className: 'history-links' });
+  for (const [key, label] of STREAMING_SERVICES) {
+    const a = el('a', { className: 'holo-pill holo-pill--sm', href: urls[key], target: '_blank', rel: 'noopener noreferrer' });
+    const shine = el('span', { className: 'holo-pill__shine' });
+    shine.setAttribute('aria-hidden', 'true');
+    a.append(shine, el('span', { className: 'holo-pill__label', text: label }));
+    row.appendChild(a);
+  }
+  return row;
+}
+
+// "4,500 of 18,230 chars · Opening"; entries saved before these fields existed just show their length
+function readMeta(item) {
+  const read = item.extractedContent.length;
+  const ofPage = item.pageChars > read ? ` of ${item.pageChars.toLocaleString()}` : '';
+  const mode = SAMPLE_AREA_LABELS[item.sampleArea];
+  return `${read.toLocaleString()}${ofPage} chars${mode ? ` · ${mode}` : ''}`;
+}
+
+function buildContentBlock(label, body, truncated, meta = `${body.length.toLocaleString()} chars`) {
   const wrap = el('details', { className: 'scanned-block' });
   const summary = el('summary', { className: 'scanned-summary' });
   const truncatedNote = truncated ? ' (truncated)' : '';
   summary.appendChild(el('span', { className: 'details-label', text: label }));
-  summary.appendChild(el('span', { className: 'scanned-meta', text: `${body.length.toLocaleString()} chars${truncatedNote}` }));
+  summary.appendChild(el('span', { className: 'scanned-meta', text: `${meta}${truncatedNote}` }));
   wrap.appendChild(summary);
   wrap.appendChild(el('pre', { className: 'scanned-content', text: body }));
   return wrap;
 }
 
+const FIRST_BATCH = 12;
+const LATER_BATCH = 50;
+let renderGeneration = 0;
+
+// The first screenful goes in as one fragment (one layout, no pop-in); the rest follows in
+// larger batches so a long history doesn't hold up the first paint.
 export async function renderHistory() {
   const list = historyListEl();
   const count = historyCountEl();
   if (!list) return;
   const history = state.summaryHistory;
-
-  list.replaceChildren();
-
-  if (history.length === 0) {
-    list.appendChild(el('li', { className: 'empty-state', text: 'No recommendations yet. Generate your first one above!' }));
-    if (count) count.textContent = '0';
-    return;
-  }
+  const generation = ++renderGeneration;
 
   if (count) count.textContent = history.length.toString();
 
-  for (let i = 0; i < history.length; i++) {
-    list.appendChild(renderItem(history[i]));
-    if (i % 3 === 2 && i < history.length - 1) {
-      await new Promise(r => setTimeout(r, 0));
-    }
+  if (history.length === 0) {
+    list.replaceChildren(el('li', { className: 'empty-state', text: 'No recommendations yet. Generate your first one above!' }));
+    return;
+  }
+
+  const batch = (from, to) => {
+    const frag = document.createDocumentFragment();
+    for (let i = from; i < to; i++) frag.appendChild(renderItem(history[i]));
+    return frag;
+  };
+
+  list.replaceChildren(batch(0, Math.min(FIRST_BATCH, history.length)));
+  for (let i = FIRST_BATCH; i < history.length; i += LATER_BATCH) {
+    await new Promise(r => setTimeout(r, 0));
+    // A newer render (e.g. Clear) replaced the list; stop filling the old one
+    if (generation !== renderGeneration) return;
+    list.appendChild(batch(i, Math.min(i + LATER_BATCH, history.length)));
   }
 }
+
+const SAMPLE_AREA_LABELS = { start: 'Opening', full: 'Whole page', text: 'Your text' };
 
 function capLong(s, max) {
   if (typeof s !== 'string') return { text: '', truncated: false };
@@ -244,16 +291,28 @@ function sanitizeEntry(entry) {
     pageTitle: cap(entry.pageTitle),
     extractedContent: extract.text,
     extractedTruncated: extract.truncated,
+    pageChars: Number.parseInt(entry.pageChars, 10) || 0,
+    sampleArea: SAMPLE_AREA_LABELS[entry.sampleArea] ? entry.sampleArea : '',
     summary: summary.text,
     summaryTruncated: summary.truncated,
   };
 }
 
+// Slots the new entry in at the top instead of rebuilding the list, so existing cards don't flash
 export function addToHistory(entry) {
   const safe = sanitizeEntry(entry);
   const next = [safe, ...state.summaryHistory].slice(0, state.historyLimit);
   saveState({ summaryHistory: next });
-  renderHistory();
+
+  const list = historyListEl();
+  if (!list) return;
+  list.querySelector('.empty-state')?.remove();
+  const li = renderItem(safe);
+  li.classList.add('is-new');
+  list.prepend(li);
+  while (list.children.length > next.length) list.lastElementChild.remove();
+  const count = historyCountEl();
+  if (count) count.textContent = next.length.toString();
 }
 
 export function trimHistory() {
